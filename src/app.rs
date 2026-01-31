@@ -1,6 +1,6 @@
 use crate::commands::NavCommand;
 use crate::renderer::Renderer;
-use crate::widgets::ListWidget;
+use crate::widgets::{ListWidget, MetadataWidget}; 
 use gilrs::{Button, EventType, Gilrs};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -26,6 +26,7 @@ pub struct OsirisApp {
     pub renderer: Renderer,
     pub last_cmd: Option<(NavCommand, Instant)>,
     pub game_list: ListWidget,
+    pub metadata: MetadataWidget,   
     active_commands: HashMap<NavCommand, CommandState>,
 }
 
@@ -36,7 +37,7 @@ impl ApplicationHandler for OsirisApp {
             self.window = Some(window);
         }
     }
-
+    
     fn window_event(&mut self, _el: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         match event {
             WindowEvent::CloseRequested => _el.exit(),
@@ -46,16 +47,22 @@ impl ApplicationHandler for OsirisApp {
                     else { self.release_command(cmd); }
                 }
             }
-
-	WindowEvent::RedrawRequested => {
-	    if let Some(win) = &self.window {
-	        // Just paint. DO NOT call request_redraw() here.
-	        self.renderer.paint(win, &mut self.last_cmd, &self.game_list);
-	    }
-	}            _ => {}
+            
+            
+            WindowEvent::RedrawRequested => {
+                if let Some(win) = &self.window {
+                    self.renderer.paint(
+                        win, 
+                        &mut self.last_cmd, 
+                        &self.game_list, 
+                        &mut self.metadata // Add &mut here
+                    );
+                }
+            }
+            _ => {}
         }
     }
-
+    
     fn about_to_wait(&mut self, _el: &ActiveEventLoop) {
         while let Some(ev) = self.gil.next_event() {
             match ev.event {
@@ -64,7 +71,7 @@ impl ApplicationHandler for OsirisApp {
                 _ => {}
             }
         }
-
+        
         let mut changed = false;
         let now = Instant::now();
         for (cmd, state) in self.active_commands.iter_mut() {
@@ -79,14 +86,14 @@ impl ApplicationHandler for OsirisApp {
                 changed = true;
             }
         }
-
+        
         if changed { if let Some(win) = &self.window { win.request_redraw(); } }
     }
 }
 
 impl OsirisApp {
-    pub fn new(gil: Gilrs, renderer: Renderer, game_list: ListWidget) -> Self {
-        Self { gil, window: None, renderer, last_cmd: None, game_list, active_commands: HashMap::new() }
+    pub fn new(gil: Gilrs, renderer: Renderer, game_list: ListWidget,  metadata: MetadataWidget) -> Self {
+        Self { gil, window: None, renderer, last_cmd: None, game_list, active_commands: HashMap::new(), metadata  }
     }
     fn press_command(&mut self, cmd: NavCommand) {
         if !self.active_commands.contains_key(&cmd) {

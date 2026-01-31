@@ -1,5 +1,5 @@
-// This tells Rust to look for src/widgets/list.rs
 pub mod list;
+pub mod metadata; // Add this
 
-// This makes ListWidget available as crate::widgets::ListWidget
 pub use list::ListWidget;
+pub use metadata::MetadataWidget; // Add this

@@ -23,17 +23,17 @@ impl ListWidget {
             scroll_offset: 0 
         }
     }
-
+    
     pub fn handle_command(&mut self, cmd: NavCommand) {
         let vis_h = self.h.saturating_sub(2);
         if vis_h == 0 { return; }
-
+        
         match cmd {
             NavCommand::Up if self.selected_index > 0 => self.selected_index -= 1,
             NavCommand::Down if self.selected_index < self.items.len().saturating_sub(1) => self.selected_index += 1,
             _ => {}
         }
-
+        
         // Keep selection in view
         if self.selected_index < self.scroll_offset { 
             self.scroll_offset = self.selected_index; 
@@ -41,7 +41,7 @@ impl ListWidget {
             self.scroll_offset = self.selected_index - vis_h + 1; 
         }
     }
-
+    
     pub fn draw(&self, pixmap: &mut PixmapMut, engine: &TuiEngine, metrics: &TuiMetrics) {
         // COLORS (BGR SWAP applied for direct buffer writing)
         // If Cyan looks Yellow, we must write (255, 255, 0) to get (0, 255, 255)
@@ -55,13 +55,13 @@ impl ListWidget {
         
         // Main Background (Dark Green/Black)
         let bg_main = Color::from_rgba8(5, 10, 0, 255);
-
+        
         // 1. Draw Outer Frame
         engine.draw_box(pixmap, metrics, self.x, self.y, self.w, self.h, cyan);
         
         // 2. Draw Title
-        engine.draw_string(pixmap, metrics, &format!(" {} ", self.title), self.x + 2, self.y, green);
-
+        engine.draw_string_ex(pixmap, metrics, &format!(" {} ", self.title), self.x + 2, self.y, green, Some(bg_main), 1);
+        
         // 3. Draw Items
         let vis_h = self.h.saturating_sub(2);
         for i in 0..vis_h {
@@ -75,7 +75,7 @@ impl ListWidget {
             } else {
                 format!("{:<width$}", raw_text, width = text_w)
             };
-
+            
             if idx == self.selected_index {
                 // Highlighted Item
                 engine.draw_string_ex(
@@ -92,7 +92,7 @@ impl ListWidget {
                 );
             }
         }
-
+        
         // 4. Draw Scrollbar
         if self.items.len() > vis_h {
             let bar_x = self.x + self.w - 1;
