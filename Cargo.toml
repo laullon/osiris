@@ -9,3 +9,4 @@ softbuffer = "0.4"
 tiny-skia = "0.11"
 gilrs = "0.11.1"
 ab_glyph = "0.2"
+rayon = "1.9" # Add this
