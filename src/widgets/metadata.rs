@@ -14,7 +14,13 @@ impl MetadataWidget {
         Self { x, y, w, h }
     }
 
-    pub fn draw(&self, pixmap: &mut PixmapMut, engine: &TuiEngine, metrics: &TuiMetrics, selected_item: &str) {
+    pub fn draw(
+        &self,
+        pixmap: &mut PixmapMut,
+        engine: &TuiEngine,
+        metrics: &TuiMetrics,
+        selected_item: &str,
+    ) {
         // COLORS (BGR for Zero-Copy)
         let cyan = Color::from_rgba8(255, 255, 0, 255);
         let green = Color::from_rgba8(0, 255, 0, 255);
@@ -24,7 +30,16 @@ impl MetadataWidget {
 
         // 1. Draw Container Frame
         engine.draw_box(pixmap, metrics, self.x, self.y, self.w, self.h, cyan);
-        engine.draw_string_ex(pixmap, metrics, " MODULE DETAILS ", self.x + 2, self.y, cyan, Some(bg_main),1);
+        engine.draw_string_ex(
+            pixmap,
+            metrics,
+            " MODULE DETAILS ",
+            self.x + 2,
+            self.y,
+            cyan,
+            Some(bg_main),
+            1,
+        );
 
         // 2. Parse the dummy string (e.g. "MAME: PAC-MAN (1980)")
         // We split by ": " to simulate extracting metadata
@@ -34,46 +49,84 @@ impl MetadataWidget {
 
         // 3. Draw Large Title
         engine.draw_string_ex(
-            pixmap, metrics, title, 
-            self.x + 2, self.y + 2, 
-            white, None, 2 // 2x Scale
+            pixmap,
+            metrics,
+            title,
+            self.x + 2,
+            self.y + 2,
+            white,
+            None,
+            2, // 2x Scale
         );
 
         // 4. Draw System Info
-        engine.draw_string(pixmap, metrics, &format!("PLATFORM: {}", system), self.x + 2, self.y + 5, green);
-        engine.draw_string(pixmap, metrics, "STATUS:   INSTALLED", self.x + 2, self.y + 6, green);
-        engine.draw_string(pixmap, metrics, "VERSION:  REV 1.0", self.x + 2, self.y + 7, green);
+        engine.draw_string(
+            pixmap,
+            metrics,
+            &format!("PLATFORM: {}", system),
+            self.x + 2,
+            self.y + 5,
+            green,
+        );
+        engine.draw_string(
+            pixmap,
+            metrics,
+            "STATUS:   INSTALLED",
+            self.x + 2,
+            self.y + 6,
+            green,
+        );
+        engine.draw_string(
+            pixmap,
+            metrics,
+            "VERSION:  REV 1.0",
+            self.x + 2,
+            self.y + 7,
+            green,
+        );
 
+        // 5. Draw "Image" Placeholder Box
+        let img_w = self.w.saturating_sub(4); // Use dynamic self.w
+        let img_h = 14;
+        let img_y = self.y + 10;
 
-	// 5. Draw "Image" Placeholder Box
-	    let img_w = self.w.saturating_sub(4); // Use dynamic self.w
-	    let img_h = 14;
-	    let img_y = self.y + 10;
-	    
-	    // Fill
-	    engine.draw_string_ex(
-	        pixmap, metrics, 
-	        &" ".repeat(img_w), 
-	        self.x + 2, img_y, 
-	        Color::TRANSPARENT, Some(dark_bg), 1
-	    );
-	    
-	    // Outline (re-uses dynamic width)
-	    engine.draw_box(pixmap, metrics, self.x + 2, img_y, img_w, img_h, cyan);
-	    
-	    // Centered "NO SIGNAL"
-	    let no_sig = "NO VISUAL FEED";
-	    let text_x = self.x + 2 + (img_w / 2).saturating_sub(no_sig.len() / 2);
-	    engine.draw_string(
-	        pixmap, metrics, no_sig, 
-	        text_x, 
-	        img_y + (img_h / 2), 
-	        Color::from_rgba8(100, 100, 100, 255)
-	    );
-        
+        // Fill
+        engine.draw_string_ex(
+            pixmap,
+            metrics,
+            &" ".repeat(img_w),
+            self.x + 2,
+            img_y,
+            Color::TRANSPARENT,
+            Some(dark_bg),
+            1,
+        );
+
+        // Outline (re-uses dynamic width)
+        engine.draw_box(pixmap, metrics, self.x + 2, img_y, img_w, img_h, cyan);
+
+        // Centered "NO SIGNAL"
+        let no_sig = "NO VISUAL FEED";
+        let text_x = self.x + 2 + (img_w / 2).saturating_sub(no_sig.len() / 2);
+        engine.draw_string(
+            pixmap,
+            metrics,
+            no_sig,
+            text_x,
+            img_y + (img_h / 2),
+            Color::from_rgba8(100, 100, 100, 255),
+        );
+
         // 6. Stats Footer
         let play_count = (selected_item.len() * 3) % 99; // Fake random number
         let stats = format!("PLAY COUNT: {:03} | RATING: A+", play_count);
-        engine.draw_string(pixmap, metrics, &stats, self.x + 2, self.y + self.h - 2, white);
+        engine.draw_string(
+            pixmap,
+            metrics,
+            &stats,
+            self.x + 2,
+            self.y + self.h - 2,
+            white,
+        );
     }
 }
