@@ -7,11 +7,8 @@ use std::{
 use tiny_skia::{Color, PixmapMut};
 use winit::window::Window;
 
-use crate::{
-    commands::NavCommand,
-    tui::{TuiEngine, GRID_ROWS},
-    widgets::{ListWidget, MetadataWidget},
-};
+use crate::tui::{TuiEngine, GRID_ROWS};
+use crate::ui::widgets::common::Widget;
 
 pub struct Renderer {
     pub tui: TuiEngine,
@@ -36,13 +33,7 @@ impl Renderer {
         }
     }
 
-    pub fn paint(
-        &mut self,
-        window: &Rc<Window>,
-        last_cmd: &mut Option<(NavCommand, Instant)>,
-        game_list: &ListWidget,
-        metadata: &mut MetadataWidget,
-    ) {
+    pub fn paint(&mut self, window: &Rc<Window>, root_widget: &mut dyn Widget) {
         let start_time = Instant::now();
         let size = window.inner_size();
 
@@ -84,7 +75,6 @@ impl Renderer {
             let bg_color = Color::from_rgba8(5, 10, 0, 255);
             let cyan = Color::from_rgba8(255, 255, 0, 255); // R/B Swapped
             let green = Color::from_rgba8(0, 255, 0, 255);
-            let white = Color::from_rgba8(255, 255, 255, 255);
             let status_bg = Color::from_rgba8(20, 20, 20, 255);
 
             // 4. DRAW
@@ -111,24 +101,10 @@ impl Renderer {
                 cyan,
             );
 
-            game_list.draw(&mut pixmap, &self.tui, &metrics);
+            // DRAW ROOT WIDGET
+            root_widget.set_rect(2, 2, metrics.cols - 4, GRID_ROWS - 4);
+            root_widget.draw(&mut pixmap, &self.tui, &metrics);
 
-            // DYNAMIC LAYOUT FOR METADATA
-            // It starts 2 cols after the list ends
-            let meta_x = game_list.x + game_list.w + 2;
-            // It fills the rest of the screen minus a small margin
-            let meta_w = metrics.cols.saturating_sub(meta_x + 2) - 1;
-
-            // Apply dimensions
-            metadata.x = meta_x;
-            metadata.y = game_list.y;
-            metadata.w = meta_w;
-            metadata.h = game_list.h;
-
-            // Draw Metadata
-            if let Some(selected_text) = game_list.items.get(game_list.selected_index) {
-                metadata.draw(&mut pixmap, &self.tui, &metrics, selected_text);
-            }
             let bar_y = GRID_ROWS - 1;
             let stats_msg = format!(
                 " [ RENDER: {:>5.2?} | FPS: {:>3} ] ",

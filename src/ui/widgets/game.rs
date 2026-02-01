@@ -1,7 +1,11 @@
-use crate::tui::{TuiEngine, TuiMetrics};
+use crate::{
+    tui::{TuiEngine, TuiMetrics},
+    ui::widgets::common::Widget,
+};
 use tiny_skia::{Color, PixmapMut};
 
-pub struct MetadataWidget {
+pub struct GameWidget {
+    selected_item: String,
     pub x: usize,
     pub y: usize,
     pub w: usize,
@@ -9,18 +13,19 @@ pub struct MetadataWidget {
     // We will pass the selected item string to the draw function
 }
 
-impl MetadataWidget {
+impl GameWidget {
     pub fn new(x: usize, y: usize, w: usize, h: usize) -> Self {
-        Self { x, y, w, h }
+        Self {
+            selected_item: "SYSTEM: UNKNOWN MODULE".to_string(),
+            x,
+            y,
+            w,
+            h,
+        }
     }
-
-    pub fn draw(
-        &self,
-        pixmap: &mut PixmapMut,
-        engine: &TuiEngine,
-        metrics: &TuiMetrics,
-        selected_item: &str,
-    ) {
+}
+impl Widget for GameWidget {
+    fn draw(&self, pixmap: &mut PixmapMut, engine: &TuiEngine, metrics: &TuiMetrics) {
         // COLORS (BGR for Zero-Copy)
         let cyan = Color::from_rgba8(255, 255, 0, 255);
         let green = Color::from_rgba8(0, 255, 0, 255);
@@ -41,9 +46,7 @@ impl MetadataWidget {
             1,
         );
 
-        // 2. Parse the dummy string (e.g. "MAME: PAC-MAN (1980)")
-        // We split by ": " to simulate extracting metadata
-        let parts: Vec<&str> = selected_item.split(": ").collect();
+        let parts: Vec<&str> = self.selected_item.split(": ").collect();
         let system = parts.get(0).unwrap_or(&"UNKNOWN");
         let title = parts.get(1).unwrap_or(&"UNKNOWN MODULE");
 
@@ -118,7 +121,7 @@ impl MetadataWidget {
         );
 
         // 6. Stats Footer
-        let play_count = (selected_item.len() * 3) % 99; // Fake random number
+        let play_count = (self.selected_item.len() * 3) % 99; // Fake random number
         let stats = format!("PLAY COUNT: {:03} | RATING: A+", play_count);
         engine.draw_string(
             pixmap,
@@ -128,5 +131,21 @@ impl MetadataWidget {
             self.y + self.h - 2,
             white,
         );
+    }
+
+    fn set_rect(&mut self, x: usize, y: usize, w: usize, h: usize) {
+        self.x = x;
+        self.y = y;
+        self.w = w;
+        self.h = h;
+    }
+
+    fn handle_command(&mut self, cmd: crate::commands::NavCommand) {
+        match cmd {
+            crate::commands::NavCommand::SelectItem(item) => {
+                self.selected_item = item;
+            }
+            _ => {}
+        }
     }
 }

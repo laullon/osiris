@@ -1,6 +1,9 @@
 use crate::commands::NavCommand;
 use crate::renderer::Renderer;
-use crate::widgets::{ListWidget, MetadataWidget};
+use crate::ui::widgets;
+use crate::ui::widgets::common::Widget;
+use crate::ui::widgets::panel::SplitPanelWidget;
+use crate::widgets::{GameWidget, ListWidget};
 use gilrs::{Button, EventType, Gilrs};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -24,9 +27,7 @@ pub struct OsirisApp {
     pub gil: Gilrs,
     pub window: Option<Rc<Window>>,
     pub renderer: Renderer,
-    pub last_cmd: Option<(NavCommand, Instant)>,
-    pub game_list: ListWidget,
-    pub metadata: MetadataWidget,
+    root_panel: SplitPanelWidget<ListWidget, GameWidget>,
     active_commands: HashMap<NavCommand, CommandState>,
 }
 
@@ -70,12 +71,7 @@ impl ApplicationHandler for OsirisApp {
 
             WindowEvent::RedrawRequested => {
                 if let Some(win) = &self.window {
-                    self.renderer.paint(
-                        win,
-                        &mut self.last_cmd,
-                        &self.game_list,
-                        &mut self.metadata, // Add &mut here
-                    );
+                    self.renderer.paint(win, &mut self.root_panel);
                 }
             }
             _ => {}
@@ -110,8 +106,7 @@ impl ApplicationHandler for OsirisApp {
             }
             if state.repeating && now.duration_since(state.last_trigger) >= REPEAT_INTERVAL {
                 state.last_trigger = now;
-                self.game_list.handle_command(*cmd);
-                self.last_cmd = Some((*cmd, now));
+                self.root_panel.handle_command(cmd.clone());
                 changed = true;
             }
         }
@@ -125,35 +120,36 @@ impl ApplicationHandler for OsirisApp {
 }
 
 impl OsirisApp {
-    pub fn new(
-        gil: Gilrs,
-        renderer: Renderer,
-        game_list: ListWidget,
-        metadata: MetadataWidget,
-    ) -> Self {
+    pub fn new(gil: Gilrs, renderer: Renderer) -> Self {
+        let items = (1..100)
+            .map(|i| format!("MISSION MODULE {:03}", i))
+            .collect();
+
+        let game_list = widgets::ListWidget::new(" MODULE SELECTOR ", 3, 2, 40, 41, items);
+        let metadata = GameWidget::new(0, 0, 0, 0);
+
+        let root_panel = SplitPanelWidget::new(game_list, metadata, 30, true, false);
+
         Self {
             gil,
             window: None,
             renderer,
-            last_cmd: None,
-            game_list,
+            root_panel,
             active_commands: HashMap::new(),
-            metadata,
         }
     }
     fn press_command(&mut self, cmd: NavCommand) {
         if !self.active_commands.contains_key(&cmd) {
             let now = Instant::now();
             self.active_commands.insert(
-                cmd,
+                cmd.clone(),
                 CommandState {
                     last_trigger: now,
                     started_at: now,
                     repeating: false,
                 },
             );
-            self.game_list.handle_command(cmd);
-            self.last_cmd = Some((cmd, now));
+            self.root_panel.handle_command(cmd);
             if let Some(win) = &self.window {
                 win.request_redraw();
             }

@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum NavCommand {
     Up,
     Down,
@@ -6,4 +6,5 @@ pub enum NavCommand {
     Right,
     Select,
     Back,
+    SelectItem(String),
 }

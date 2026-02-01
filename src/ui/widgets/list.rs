@@ -26,8 +26,10 @@ impl ListWidget {
             scroll_offset: 0,
         }
     }
+}
 
-    pub fn handle_command(&mut self, cmd: NavCommand) {
+impl crate::ui::widgets::common::Widget for ListWidget {
+    fn handle_command(&mut self, cmd: NavCommand) {
         let vis_h = self.h.saturating_sub(2);
         if vis_h == 0 {
             return;
@@ -49,7 +51,7 @@ impl ListWidget {
         }
     }
 
-    pub fn draw(&self, pixmap: &mut PixmapMut, engine: &TuiEngine, metrics: &TuiMetrics) {
+    fn draw(&self, pixmap: &mut PixmapMut, engine: &TuiEngine, metrics: &TuiMetrics) {
         // COLORS (BGR SWAP applied for direct buffer writing)
         // If Cyan looks Yellow, we must write (255, 255, 0) to get (0, 255, 255)
         let cyan = Color::from_rgba8(255, 255, 0, 255);
@@ -145,5 +147,12 @@ impl ListWidget {
                 );
             }
         }
+    }
+
+    fn set_rect(&mut self, x: usize, y: usize, w: usize, h: usize) {
+        self.x = x;
+        self.y = y;
+        self.w = w;
+        self.h = h;
     }
 }
