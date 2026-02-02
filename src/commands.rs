@@ -6,5 +6,12 @@ pub enum NavCommand {
     Right,
     Select,
     Back,
-    SelectItem(String),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum UiEvent {
+    None,
+    SystemChanged(usize),
+    GameChanged(usize),
+    LaunchGame(usize, usize),
 }

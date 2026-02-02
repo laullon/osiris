@@ -1,9 +1,9 @@
 use crate::commands::NavCommand;
-use crate::renderer::Renderer;
-use crate::ui::widgets;
+use crate::models::RomLibrary;
+use crate::ui::renderer::Renderer;
 use crate::ui::widgets::common::Widget;
 use crate::ui::widgets::panel::SplitPanelWidget;
-use crate::widgets::{GameWidget, ListWidget};
+use crate::ui::widgets::{self, CarouselWidget, GameWidget, ListWidget};
 use gilrs::{Button, EventType, Gilrs};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -23,12 +23,16 @@ struct CommandState {
     repeating: bool,
 }
 
+type MainSplit = SplitPanelWidget<ListWidget, GameWidget>;
+type RootLayout = SplitPanelWidget<CarouselWidget, MainSplit>;
+
 pub struct OsirisApp {
     pub gil: Gilrs,
     pub window: Option<Rc<Window>>,
     pub renderer: Renderer,
-    root_panel: SplitPanelWidget<ListWidget, GameWidget>,
+    root_panel: RootLayout,
     active_commands: HashMap<NavCommand, CommandState>,
+    library: Rc<RomLibrary>,
 }
 
 impl ApplicationHandler for OsirisApp {
@@ -98,7 +102,7 @@ impl ApplicationHandler for OsirisApp {
         let mut changed = false;
         let now = Instant::now();
         for (cmd, state) in self.active_commands.iter_mut() {
-            if !matches!(cmd, NavCommand::Up | NavCommand::Down) {
+            if matches!(cmd, NavCommand::Select | NavCommand::Back) {
                 continue;
             }
             if !state.repeating && now.duration_since(state.started_at) >= REPEAT_DELAY {
@@ -106,7 +110,8 @@ impl ApplicationHandler for OsirisApp {
             }
             if state.repeating && now.duration_since(state.last_trigger) >= REPEAT_INTERVAL {
                 state.last_trigger = now;
-                self.root_panel.handle_command(cmd.clone());
+                let event = self.root_panel.handle_command(cmd.clone());
+                self.root_panel.handle_ui_event(event);
                 changed = true;
             }
         }
@@ -120,15 +125,14 @@ impl ApplicationHandler for OsirisApp {
 }
 
 impl OsirisApp {
-    pub fn new(gil: Gilrs, renderer: Renderer) -> Self {
-        let items = (1..100)
-            .map(|i| format!("MISSION MODULE {:03}", i))
-            .collect();
+    pub fn new(gil: Gilrs, renderer: Renderer, library: RomLibrary) -> Self {
+        let library = Rc::new(library);
+        let carousel = CarouselWidget::new(library.clone());
+        let game_list = widgets::ListWidget::new(library.clone());
+        let metadata = GameWidget::new(library.clone());
 
-        let game_list = widgets::ListWidget::new(" MODULE SELECTOR ", 3, 2, 40, 41, items);
-        let metadata = GameWidget::new(0, 0, 0, 0);
-
-        let root_panel = SplitPanelWidget::new(game_list, metadata, 30, true, false);
+        let main_split = SplitPanelWidget::new(game_list, metadata, 35, true, false);
+        let root_panel = SplitPanelWidget::new(carousel, main_split, 20, true, true);
 
         Self {
             gil,
@@ -136,8 +140,10 @@ impl OsirisApp {
             renderer,
             root_panel,
             active_commands: HashMap::new(),
+            library,
         }
     }
+
     fn press_command(&mut self, cmd: NavCommand) {
         if !self.active_commands.contains_key(&cmd) {
             let now = Instant::now();
@@ -149,7 +155,8 @@ impl OsirisApp {
                     repeating: false,
                 },
             );
-            self.root_panel.handle_command(cmd);
+            let event = self.root_panel.handle_command(cmd);
+            self.root_panel.handle_ui_event(event);
             if let Some(win) = &self.window {
                 win.request_redraw();
             }
@@ -162,6 +169,8 @@ impl OsirisApp {
         match key {
             KeyCode::ArrowUp => Some(NavCommand::Up),
             KeyCode::ArrowDown => Some(NavCommand::Down),
+            KeyCode::ArrowLeft => Some(NavCommand::Left),
+            KeyCode::ArrowRight => Some(NavCommand::Right),
             KeyCode::Space => Some(NavCommand::Select),
             KeyCode::Escape => Some(NavCommand::Back),
             _ => None,
@@ -171,6 +180,8 @@ impl OsirisApp {
         match btn {
             Button::DPadUp => Some(NavCommand::Up),
             Button::DPadDown => Some(NavCommand::Down),
+            Button::DPadLeft => Some(NavCommand::Left),
+            Button::DPadRight => Some(NavCommand::Right),
             Button::South => Some(NavCommand::Select),
             Button::East => Some(NavCommand::Back),
             _ => None,

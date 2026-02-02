@@ -3,23 +3,14 @@
 echo "GATHERING OSIRIS SOURCE CODE..."
 
 # Define the files to gather
-FILES=(
-    "Cargo.toml"
-    "src/main.rs"
-    "src/commands.rs"
-    "src/tui.rs"
-    "src/renderer.rs"
-    "src/app.rs"
-    "src/widgets/mod.rs"
-    "src/widgets/list.rs"
-)
+FILES=$(find src -type f -name "*.rs" | tr ' ' '\n' )
 
 # Output destination
 OUT="osiris_dump.txt"
 echo "Project OSIRIS Source Dump - $(date)" > $OUT
 echo "-----------------------------------" >> $OUT
 
-for f in "${FILES[@]}"; do
+for f in ${FILES}; do
     if [ -f "$f" ]; then
         echo "Processing $f..."
         echo -e "\n**$f**" >> $OUT

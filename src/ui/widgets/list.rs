@@ -1,5 +1,7 @@
-use crate::commands::NavCommand;
+use crate::commands::{NavCommand, UiEvent};
+use crate::models::RomLibrary;
 use crate::tui::{TuiEngine, TuiMetrics};
+use std::rc::Rc;
 use tiny_skia::{Color, PixmapMut};
 
 pub struct ListWidget {
@@ -8,20 +10,22 @@ pub struct ListWidget {
     pub y: usize,
     pub w: usize,
     pub h: usize,
-    pub items: Vec<String>,
+    pub library: Rc<RomLibrary>,
+    pub selected_system: usize,
     pub selected_index: usize,
     pub scroll_offset: usize,
 }
 
 impl ListWidget {
-    pub fn new(title: &str, x: usize, y: usize, w: usize, h: usize, items: Vec<String>) -> Self {
+    pub fn new(library: Rc<RomLibrary>) -> Self {
         Self {
-            title: title.to_string(),
-            x,
-            y,
-            w,
-            h,
-            items,
+            title: "GAME LIST".to_string(),
+            x: 0,
+            y: 0,
+            w: 0,
+            h: 0,
+            library,
+            selected_system: 0,
             selected_index: 0,
             scroll_offset: 0,
         }
@@ -29,26 +33,40 @@ impl ListWidget {
 }
 
 impl crate::ui::widgets::common::Widget for ListWidget {
-    fn handle_command(&mut self, cmd: NavCommand) {
-        let vis_h = self.h.saturating_sub(2);
-        if vis_h == 0 {
-            return;
-        }
-
+    fn handle_command(&mut self, cmd: NavCommand) -> UiEvent {
+        let old_idx = self.selected_index;
         match cmd {
             NavCommand::Up if self.selected_index > 0 => self.selected_index -= 1,
-            NavCommand::Down if self.selected_index < self.items.len().saturating_sub(1) => {
+            NavCommand::Down
+                if self.selected_index
+                    < self.library.systems[self.selected_system]
+                        .games
+                        .len()
+                        .saturating_sub(1) =>
+            {
                 self.selected_index += 1
             }
-            _ => {}
+            NavCommand::Select => {
+                if let Some(_item) = self.library.systems[self.selected_system]
+                    .games
+                    .get(self.selected_index)
+                {
+                    return UiEvent::LaunchGame(self.selected_index, self.selected_index);
+                }
+            }
+            _ => return UiEvent::None,
         }
 
-        // Keep selection in view
-        if self.selected_index < self.scroll_offset {
-            self.scroll_offset = self.selected_index;
-        } else if self.selected_index >= self.scroll_offset + vis_h {
-            self.scroll_offset = self.selected_index - vis_h + 1;
+        if old_idx != self.selected_index {
+            let vis_h = self.h.saturating_sub(2);
+            if self.selected_index < self.scroll_offset {
+                self.scroll_offset = self.selected_index;
+            } else if self.selected_index >= self.scroll_offset + vis_h {
+                self.scroll_offset = self.selected_index - vis_h + 1;
+            }
+            return UiEvent::GameChanged(self.selected_index);
         }
+        UiEvent::None
     }
 
     fn draw(&self, pixmap: &mut PixmapMut, engine: &TuiEngine, metrics: &TuiMetrics) {
@@ -84,12 +102,12 @@ impl crate::ui::widgets::common::Widget for ListWidget {
         let vis_h = self.h.saturating_sub(2);
         for i in 0..vis_h {
             let idx = i + self.scroll_offset;
-            if idx >= self.items.len() {
+            if idx >= self.library.systems[self.selected_system].games.len() {
                 break;
             }
 
             let text_w = self.w.saturating_sub(4);
-            let raw_text = &self.items[idx];
+            let raw_text = &self.library.systems[self.selected_system].games[idx].name;
             let display_text = if raw_text.len() > text_w {
                 format!("{}…", &raw_text[..text_w.saturating_sub(1)])
             } else {
@@ -122,9 +140,9 @@ impl crate::ui::widgets::common::Widget for ListWidget {
         }
 
         // 4. Draw Scrollbar
-        if self.items.len() > vis_h {
+        if self.library.systems[self.selected_system].games.len() > vis_h {
             let bar_x = self.x + self.w - 1;
-            let total_items = self.items.len() as f32;
+            let total_items = self.library.systems[self.selected_system].games.len() as f32;
             let track_h = vis_h as f32;
 
             // Calculate handle relative position
@@ -154,5 +172,16 @@ impl crate::ui::widgets::common::Widget for ListWidget {
         self.y = y;
         self.w = w;
         self.h = h;
+    }
+
+    fn handle_ui_event(&mut self, event: UiEvent) {
+        match event {
+            UiEvent::SystemChanged(system_idx) => {
+                self.selected_system = system_idx;
+                self.selected_index = 0;
+                self.scroll_offset = 0;
+            }
+            _ => {}
+        }
     }
 }

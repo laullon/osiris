@@ -1,4 +1,7 @@
-use crate::ui::widgets::common::{Container, Widget};
+use crate::{
+    commands::{NavCommand, UiEvent},
+    ui::widgets::common::{Container, Widget},
+};
 
 pub struct SplitPanelWidget<L: Widget, R: Widget> {
     left: L,
@@ -93,9 +96,16 @@ impl<L: Widget, R: Widget> Widget for SplitPanelWidget<L, R> {
         self.arrange_widgets();
     }
 
-    fn handle_command(&mut self, cmd: crate::commands::NavCommand) {
-        // Forward command to both widgets
-        self.left.handle_command(cmd.clone());
-        self.right.handle_command(cmd);
+    fn handle_command(&mut self, cmd: NavCommand) -> UiEvent {
+        let e1 = self.left.handle_command(cmd.clone());
+        if e1 != UiEvent::None {
+            return e1;
+        }
+        self.right.handle_command(cmd)
+    }
+
+    fn handle_ui_event(&mut self, event: UiEvent) {
+        self.left.handle_ui_event(event.clone());
+        self.right.handle_ui_event(event);
     }
 }

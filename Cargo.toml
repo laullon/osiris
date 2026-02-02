@@ -1,7 +1,7 @@
 [package]
 name    = "osiris"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 winit = { version = "0.30", features = ["wayland", "x11"] }
@@ -9,4 +9,7 @@ softbuffer = "0.4"
 tiny-skia = "0.11"
 gilrs = "0.11.1"
 ab_glyph = "0.2"
-rayon = "1.9" # Add this
+rayon = "1.9"
+quick-xml = { version = "0.31", features = ["serialize"] }
+serde = { version = "1.0", features = ["derive"] }
+image = "0.25"
