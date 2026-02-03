@@ -2,7 +2,7 @@ use crate::models::{Game, RomLibrary, System};
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
 pub fn scan_roms<P: AsRef<Path>>(root_path: P) -> RomLibrary {

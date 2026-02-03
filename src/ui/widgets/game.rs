@@ -1,5 +1,5 @@
 use crate::{
-    commands::UiEvent,
+    commands::{ActionCommand, ControlCommand, UiEvent},
     models::RomLibrary,
     tui::{TuiEngine, TuiMetrics},
     ui::widgets::common::Widget,
@@ -233,17 +233,19 @@ impl Widget for GameWidget {
         self.h = h;
     }
 
-    fn handle_command(&mut self, cmd: crate::commands::NavCommand) -> UiEvent {
+    fn handle_command(&mut self, cmd: ControlCommand) -> UiEvent {
         match cmd {
-            crate::commands::NavCommand::Select => {
-                todo!("Implement module selection action");
-            }
-            _ => {}
+            ControlCommand::Action(action_command) => match action_command {
+                ActionCommand::Select => {
+                    UiEvent::LaunchGame(self.selected_system, self.selected_game)
+                }
+                ActionCommand::Back => UiEvent::None,
+            },
+            _ => UiEvent::None,
         }
-        UiEvent::LaunchGame(self.selected_system, self.selected_game)
     }
 
-    fn handle_ui_event(&mut self, event: crate::commands::UiEvent) {
+    fn handle_ui_event(&mut self, event: UiEvent) {
         // Handle UI events if necessary
         match event {
             UiEvent::SystemChanged(system_idx) => {

@@ -1,4 +1,4 @@
-use crate::commands::{NavCommand, UiEvent};
+use crate::commands::{ControlCommand, NavigationCommand, UiEvent};
 use crate::models::RomLibrary;
 use crate::tui::{TuiEngine, TuiMetrics};
 use std::rc::Rc;
@@ -33,27 +33,23 @@ impl ListWidget {
 }
 
 impl crate::ui::widgets::common::Widget for ListWidget {
-    fn handle_command(&mut self, cmd: NavCommand) -> UiEvent {
+    fn handle_command(&mut self, cmd: ControlCommand) -> UiEvent {
         let old_idx = self.selected_index;
+
         match cmd {
-            NavCommand::Up if self.selected_index > 0 => self.selected_index -= 1,
-            NavCommand::Down
-                if self.selected_index
-                    < self.library.systems[self.selected_system]
-                        .games
-                        .len()
-                        .saturating_sub(1) =>
-            {
-                self.selected_index += 1
-            }
-            NavCommand::Select => {
-                if let Some(_item) = self.library.systems[self.selected_system]
-                    .games
-                    .get(self.selected_index)
+            ControlCommand::Navigation(nav_command) => match nav_command {
+                NavigationCommand::Up if self.selected_index > 0 => self.selected_index -= 1,
+                NavigationCommand::Down
+                    if self.selected_index
+                        < self.library.systems[self.selected_system]
+                            .games
+                            .len()
+                            .saturating_sub(1) =>
                 {
-                    return UiEvent::LaunchGame(self.selected_index, self.selected_index);
+                    self.selected_index += 1
                 }
-            }
+                _ => return UiEvent::None,
+            },
             _ => return UiEvent::None,
         }
 

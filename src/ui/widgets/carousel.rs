@@ -1,4 +1,4 @@
-use crate::commands::{NavCommand, UiEvent};
+use crate::commands::{ControlCommand, NavigationCommand, UiEvent};
 use crate::models::RomLibrary;
 use crate::ui::tui::{TuiEngine, TuiMetrics};
 use crate::ui::widgets::common::Widget;
@@ -35,21 +35,26 @@ impl Widget for CarouselWidget {
         self.h = h;
     }
 
-    fn handle_command(&mut self, cmd: NavCommand) -> UiEvent {
+    fn handle_command(&mut self, cmd: ControlCommand) -> UiEvent {
         if self.library.systems.is_empty() {
             return UiEvent::None;
         }
         let old_idx = self.selected_index;
 
         match cmd {
-            NavCommand::Right => {
-                self.selected_index = (self.selected_index + 1) % self.library.systems.len();
+            ControlCommand::Navigation(navigation_command) => match navigation_command {
+                NavigationCommand::Right => {
+                    self.selected_index = (self.selected_index + 1) % self.library.systems.len();
+                }
+                NavigationCommand::Left => {
+                    self.selected_index = (self.selected_index + self.library.systems.len() - 1)
+                        % self.library.systems.len();
+                }
+                _ => return UiEvent::None,
+            },
+            _ => {
+                return UiEvent::None;
             }
-            NavCommand::Left => {
-                self.selected_index = (self.selected_index + self.library.systems.len() - 1)
-                    % self.library.systems.len();
-            }
-            _ => return UiEvent::None,
         }
 
         if old_idx != self.selected_index {

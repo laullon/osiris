@@ -1,5 +1,5 @@
 use crate::{
-    commands::{NavCommand, UiEvent},
+    commands::{ControlCommand, UiEvent},
     ui::widgets::common::{Container, Widget},
 };
 
@@ -96,7 +96,7 @@ impl<L: Widget, R: Widget> Widget for SplitPanelWidget<L, R> {
         self.arrange_widgets();
     }
 
-    fn handle_command(&mut self, cmd: NavCommand) -> UiEvent {
+    fn handle_command(&mut self, cmd: ControlCommand) -> UiEvent {
         let e1 = self.left.handle_command(cmd.clone());
         if e1 != UiEvent::None {
             return e1;
