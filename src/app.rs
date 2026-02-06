@@ -5,11 +5,13 @@ use crate::ui::renderer::Renderer;
 use crate::ui::widgets::common::Widget;
 use crate::ui::widgets::panel::SplitPanelWidget;
 use crate::ui::widgets::{self, CarouselWidget, GameWidget, ListWidget};
+use gilrs::ev::Code;
 use gilrs::{Button, EventType};
+use rayon::str::Bytes;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 use winit::application::ApplicationHandler;
-use winit::event::{ElementState, KeyEvent, WindowEvent};
+use winit::event::{self, ElementState, KeyEvent, WindowEvent};
 use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
@@ -78,9 +80,15 @@ impl ApplicationHandler<GilrsEvent> for OsirisApp {
     fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: GilrsEvent) {
         match event {
             GilrsEvent::GamepadInput(ev) => {
-                if let EventType::ButtonChanged(btn, value, _) = ev.event {
-                    let command = self.map_axis(btn, value);
-                    self.handle_control_command(command);
+                match ev.event {
+                    EventType::ButtonReleased(_, _) => {
+                        self.active_command.0 = NavigationCommand::None;
+                    }
+                    EventType::ButtonPressed(btn, _) => {
+                        let command = self.map_axis(btn);
+                        self.handle_control_command(command);
+                    }
+                    _ => {}
                 }
 
                 if let Some(window) = &self.window {
@@ -177,21 +185,12 @@ impl OsirisApp {
         }
     }
 
-    fn map_axis(&self, btn: Button, value: f32) -> Option<ControlCommand> {
-        println!("axis: {:?} value: {}", btn, value);
-        match (btn, value) {
-            (Button::DPadUp, v) if v > 0.8 => {
-                Some(ControlCommand::Navigation(NavigationCommand::Down))
-            }
-            (Button::DPadUp, v) if v < 0.2 => {
-                Some(ControlCommand::Navigation(NavigationCommand::Up))
-            }
-            (Button::DPadRight, v) if v > 0.8 => {
-                Some(ControlCommand::Navigation(NavigationCommand::Right))
-            }
-            (Button::DPadRight, v) if v < 0.2 => {
-                Some(ControlCommand::Navigation(NavigationCommand::Left))
-            }
+    fn map_axis(&self, btn: Button) -> Option<ControlCommand> {
+        match btn {
+            Button::DPadUp => Some(ControlCommand::Navigation(NavigationCommand::Up)),
+            Button::DPadDown => Some(ControlCommand::Navigation(NavigationCommand::Down)),
+            Button::DPadLeft => Some(ControlCommand::Navigation(NavigationCommand::Left)),
+            Button::DPadRight => Some(ControlCommand::Navigation(NavigationCommand::Right)),
             _ => None,
         }
     }
