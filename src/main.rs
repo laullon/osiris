@@ -1,13 +1,14 @@
 mod app;
 mod commands;
+mod input;
 mod models;
 mod storage;
 mod ui;
 
-use std::thread;
+use std::{thread, time::Duration};
 
+use crate::input::gamepad::{Event, GamepadStateWrapper};
 use crate::ui::{renderer, tui};
-use gilrs::Event;
 use winit::event_loop::{ControlFlow, EventLoop};
 
 #[derive(Debug)]
@@ -33,11 +34,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = app::OsirisApp::new(renderer::Renderer::new(tui_instance), library);
 
     thread::spawn(move || {
-        let mut gilrs = gilrs::Gilrs::new().unwrap();
+        let mut gamepad_wrapper =
+            GamepadStateWrapper::new().expect("Failed to initialize gamepads");
         loop {
-            while let Some(event) = gilrs.next_event() {
-                println!("Gamepad event: {:?}", event);
-                // Send the event to wake the loop
+            while let Some(event) = gamepad_wrapper.next_event() {
+                // Send the event to wake the loop (logging handled in wrapper)
                 let _ = proxy.send_event(GilrsEvent::GamepadInput(event));
             }
             std::thread::sleep(std::time::Duration::from_millis(10));

@@ -1,12 +1,11 @@
-use crate::GilrsEvent;
 use crate::commands::{ActionCommand, ControlCommand, NavigationCommand};
+use crate::input::gamepad::{Button, EventType};
 use crate::models::RomLibrary;
 use crate::ui::renderer::Renderer;
 use crate::ui::widgets::common::Widget;
 use crate::ui::widgets::panel::SplitPanelWidget;
 use crate::ui::widgets::{self, CarouselWidget, GameWidget, ListWidget};
-use gilrs::ev::Code;
-use gilrs::{Button, EventType};
+use crate::GilrsEvent;
 use rayon::str::Bytes;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
@@ -81,12 +80,30 @@ impl ApplicationHandler<GilrsEvent> for OsirisApp {
         match event {
             GilrsEvent::GamepadInput(ev) => {
                 match ev.event {
-                    EventType::ButtonReleased(_, _) => {
-                        self.active_command.0 = NavigationCommand::None;
-                    }
-                    EventType::ButtonPressed(btn, _) => {
-                        let command = self.map_axis(btn);
-                        self.handle_control_command(command);
+                    EventType::ButtonChanged(btn, value, _) => {
+                        // For D-pad, determine navigation direction based on movement from neutral
+                        if matches!(
+                            btn,
+                            Button::DPadUp
+                                | Button::DPadDown
+                                | Button::DPadLeft
+                                | Button::DPadRight
+                        ) {
+                            println!(
+                                "[UI] Received D-pad event from controller {}: {:?} = {:.3}",
+                                ev.id, btn, value
+                            );
+                            let command = self.map_dpad_direction(btn, value);
+                            self.handle_control_command(command);
+                        } else {
+                            // Regular buttons: simple threshold
+                            if value > 0.5 {
+                                let command = self.map_axis(btn);
+                                self.handle_control_command(command);
+                            } else {
+                                self.active_command.0 = NavigationCommand::None;
+                            }
+                        }
                     }
                     _ => {}
                 }
@@ -183,6 +200,57 @@ impl OsirisApp {
             KeyCode::Escape => Some(ControlCommand::Action(ActionCommand::Back)),
             _ => None,
         }
+    }
+
+    fn map_dpad_direction(&self, btn: Button, value: f32) -> Option<ControlCommand> {
+        // D-pad is analog: ~0.4-0.5 = neutral, 1.0 = one direction, 0.0 = opposite
+        // Threshold: > 0.7 = pressed, < 0.3 = opposite direction, between = no action
+
+        let command = match btn {
+            Button::DPadUp => {
+                if value > 0.7 {
+                    Some(ControlCommand::Navigation(NavigationCommand::Up))
+                } else if value < 0.3 {
+                    Some(ControlCommand::Navigation(NavigationCommand::Down))
+                } else {
+                    Some(ControlCommand::Navigation(NavigationCommand::None))
+                }
+            }
+            Button::DPadDown => {
+                if value > 0.7 {
+                    Some(ControlCommand::Navigation(NavigationCommand::Down))
+                } else if value < 0.3 {
+                    Some(ControlCommand::Navigation(NavigationCommand::Up))
+                } else {
+                    Some(ControlCommand::Navigation(NavigationCommand::None))
+                }
+            }
+            Button::DPadLeft => {
+                if value > 0.7 {
+                    Some(ControlCommand::Navigation(NavigationCommand::Left))
+                } else if value < 0.3 {
+                    Some(ControlCommand::Navigation(NavigationCommand::Right))
+                } else {
+                    Some(ControlCommand::Navigation(NavigationCommand::None))
+                }
+            }
+            Button::DPadRight => {
+                if value > 0.7 {
+                    Some(ControlCommand::Navigation(NavigationCommand::Right))
+                } else if value < 0.3 {
+                    Some(ControlCommand::Navigation(NavigationCommand::Left))
+                } else {
+                    Some(ControlCommand::Navigation(NavigationCommand::None))
+                }
+            }
+            _ => None,
+        };
+
+        if let Some(ControlCommand::Navigation(nav)) = &command {
+            println!("[D-PAD] {:?} value={:.3} -> {:?}", btn, value, nav);
+        }
+
+        command
     }
 
     fn map_axis(&self, btn: Button) -> Option<ControlCommand> {
