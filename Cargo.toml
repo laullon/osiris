@@ -4,13 +4,13 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-winit = { version = "0.30", features = ["wayland", "x11"] }
+winit = { version = "0.30.13", features = ["wayland", "x11"] }
 softbuffer = "0.4"
-tiny-skia = "0.11"
-hidapi = "1.4"
+tiny-skia = "0.12.0"
+hidapi = "2.6.5"
 once_cell = "1.18"
 ab_glyph = "0.2"
 rayon = "1.9"
-quick-xml = { version = "0.31", features = ["serialize"] }
+quick-xml = { version = "0.39.2", features = ["serialize"] }
 serde = { version = "1.0", features = ["derive"] }
 image = "0.25"

@@ -175,6 +175,7 @@ impl GamepadStateWrapper {
 
         // Enumerate HID devices: prefer usage_page 0x01 (Generic Desktop) with usage 0x05 (Game Pad) or 0x04 (Joystick)
         for devinfo in api.device_list() {
+            println!("{:04x}:{:04x}", devinfo.vendor_id(), devinfo.product_id());
             let usage_page = devinfo.usage_page();
             let usage = devinfo.usage();
             let is_gamepad = if usage_page == 0x01 && (usage == 0x05 || usage == 0x04) {
@@ -200,106 +201,8 @@ impl GamepadStateWrapper {
             if is_gamepad {
                 let path = devinfo.path();
                 if let Ok(device) = api.open_path(path) {
-                    let mut dev = device; // keep mutable to read initial report
-                    let id = next_id;
-                    next_id += 1;
-                    let name = devinfo
-                        .product_string()
-                        .unwrap_or("Unknown Controller".into())
-                        .to_string();
-                    let report_len = 64; // increase buffer to capture larger reports
-
-                    // try to read an initial report to seed last_report and avoid spurious events
-                    let mut init_state = GamepadDeviceState::new(id, name.clone(), report_len);
-                    let mut init_buf = [0u8; 64];
-                    match dev.read_timeout(&mut init_buf, 50) {
-                        Ok(len) if len > 0 => {
-                            let data = &init_buf[..len];
-                            init_state.last_report.clear();
-                            init_state.last_report.extend_from_slice(data);
-                            init_state.pending_report.clear();
-                            init_state.pending_report.extend_from_slice(data);
-                            init_state.pending_count = 0;
-
-                            // seed axis states if available and detect signed/unsigned range
-                            if data.len() >= 1 {
-                                let raw = data[0] as f32;
-                                // Detect: if raw is close to 128, it's likely signed (center at 127)
-                                // if raw is close to 0 or 1, it's likely unsigned (center at ~128)
-                                let is_signed = raw > 64.0 && raw < 192.0;
-                                init_state.axis_signed = Some(is_signed);
-                                if is_signed {
-                                    let value = (raw - 128.0) / 127.0;
-                                    init_state.axis_states.insert(Axis::LeftStickX, value);
-                                } else {
-                                    let value = raw / 255.0;
-                                    init_state.axis_states.insert(Axis::LeftStickX, value);
-                                }
-                            }
-                            if data.len() >= 2 {
-                                let raw = data[1] as f32;
-                                let is_signed = init_state.axis_signed.unwrap_or(true);
-                                if is_signed {
-                                    let value = (raw - 128.0) / 127.0;
-                                    init_state.axis_states.insert(Axis::LeftStickY, value);
-                                } else {
-                                    let value = raw / 255.0;
-                                    init_state.axis_states.insert(Axis::LeftStickY, value);
-                                }
-                            }
-                            if data.len() >= 3 {
-                                let bits = data[2];
-                                for i in 0..8 {
-                                    let mask = 1u8 << i;
-                                    let pressed = (bits & mask) != 0;
-                                    let btn = match i {
-                                        0 => Button::South,
-                                        1 => Button::East,
-                                        2 => Button::North,
-                                        3 => Button::West,
-                                        4 => Button::LeftTrigger,
-                                        5 => Button::RightTrigger,
-                                        6 => Button::Select,
-                                        7 => Button::Start,
-                                        _ => Button::South,
-                                    };
-                                    init_state
-                                        .button_states
-                                        .insert(btn, if pressed { 1.0 } else { 0.0 });
-                                }
-                            }
-                            if data.len() >= 4 {
-                                let hat = data[3];
-                                match hat {
-                                    0 => {
-                                        init_state.button_states.insert(Button::DPadUp, 1.0);
-                                    }
-                                    2 => {
-                                        init_state.button_states.insert(Button::DPadRight, 1.0);
-                                    }
-                                    4 => {
-                                        init_state.button_states.insert(Button::DPadDown, 1.0);
-                                    }
-                                    6 => {
-                                        init_state.button_states.insert(Button::DPadLeft, 1.0);
-                                    }
-                                    _ => {}
-                                }
-                            }
-                        }
-                        _ => {
-                            // leave defaults (neutral)
-                        }
-                    }
-
-                    devices.insert(id, dev);
-                    gamepad_states.insert(id, init_state);
-
-                    // update shared status
-                    if let Ok(mut st) = GAMEPAD_STATUS.lock() {
-                        st.controllers.insert(id, name);
-                        st.push_log(format!("[GAMEPAD {}] detected", id));
-                    }
+                    let mut buf = [0u8; 64];
+                    device.get_feature_report(&mut buf);
                 }
             }
         }
@@ -322,9 +225,9 @@ impl GamepadStateWrapper {
                 Ok(len) if len > 0 => {
                     let data = &buf[..len];
                     // log raw report for debugging multi-controller issues
-                    if let Ok(mut st) = GAMEPAD_STATUS.lock() {
-                        st.push_log(format!("[GAMEPAD RAW {}] len={} {:?}", id, len, &data));
-                    }
+                    // if let Ok(mut st) = GAMEPAD_STATUS.lock() {
+                    //     st.push_log(format!("[GAMEPAD RAW {}] len={} {:?}", id, len, &data));
+                    // }
                     // Compare with last report to detect changes
                     let state = self.gamepad_states.get_mut(id).unwrap();
                     // Ensure last_report/pending_report are large enough

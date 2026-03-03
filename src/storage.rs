@@ -77,7 +77,7 @@ fn parse_mame_metadata(mame_path: &Path) -> Vec<Game> {
     };
 
     let mut reader = Reader::from_reader(xml_data.as_slice());
-    reader.trim_text(true);
+    reader.config_mut().trim_text(true);
 
     let mut games = Vec::new();
     let mut buf = Vec::new();
@@ -133,11 +133,7 @@ fn parse_mame_metadata(mame_path: &Path) -> Vec<Game> {
             }
             Ok(Event::Text(e)) => {
                 if let Some(g) = &mut current_game {
-                    // Correct unescape logic for quick-xml 0.31
-                    let val = e
-                        .unescape()
-                        .map(|c| c.into_owned())
-                        .unwrap_or_else(|_| "".into());
+                    let val = e.escape_ascii().to_string();
                     match current_tag.as_str() {
                         "description" => g.name = val,
                         "year" => g.year = val,
