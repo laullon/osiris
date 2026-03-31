@@ -1,4 +1,4 @@
-use ab_glyph::{point, Font, FontRef, PxScale, ScaleFont};
+use ab_glyph::{Font, FontRef, PxScale, ScaleFont, point};
 use tiny_skia::{Color, Paint, PixmapMut, Rect, Transform};
 
 pub const GRID_ROWS: usize = 45;

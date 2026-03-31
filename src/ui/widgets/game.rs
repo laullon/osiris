@@ -5,11 +5,7 @@ use crate::{
     ui::widgets::common::Widget,
 };
 use image::GenericImageView;
-use std::{
-    path::PathBuf,
-    rc::Rc,
-    time::{Duration, SystemTime},
-};
+use std::{path::PathBuf, rc::Rc};
 use tiny_skia::{Color, Pixmap, PixmapMut};
 
 pub struct GameWidget {
@@ -217,65 +213,7 @@ impl Widget for GameWidget {
             );
         }
 
-        // 6. Controller status and logs in footer
-        // Read shared gamepad status
-        if let Ok(st) = crate::input::gamepad::GAMEPAD_STATUS.lock() {
-            // Draw controllers summary
-            let mut line = format!("Controllers: {} ", st.controllers.len());
-            for (id, name) in st.controllers.iter() {
-                let active = st
-                    .last_event_time_ms
-                    .get(id)
-                    .map(|t| {
-                        (*t as i128)
-                            > (SystemTime::now()
-                                .duration_since(SystemTime::UNIX_EPOCH)
-                                .unwrap_or(Duration::from_secs(0))
-                                .as_millis() as i128
-                                - 2000)
-                    })
-                    .unwrap_or(false);
-                let mark = if active { "*" } else { " " };
-                line.push_str(&format!(
-                    "[{}:{}]{} ",
-                    id,
-                    name.chars().take(8).collect::<String>(),
-                    mark
-                ));
-            }
-            engine.draw_string(
-                pixmap,
-                metrics,
-                &line,
-                self.x + 2,
-                self.y + self.h - 4,
-                white,
-            );
-
-            // Draw recent logs (up to 3)
-            let logs_to_show = st.recent_logs.iter().rev().take(3).collect::<Vec<_>>();
-            for (i, log) in logs_to_show.iter().enumerate() {
-                engine.draw_string(
-                    pixmap,
-                    metrics,
-                    &format!("{}", log),
-                    self.x + 2,
-                    self.y + self.h - 3 + i,
-                    Color::from_rgba8(180, 180, 180, 255),
-                );
-            }
-        } else {
-            engine.draw_string(
-                pixmap,
-                metrics,
-                "Controllers: 0",
-                self.x + 2,
-                self.y + self.h - 4,
-                white,
-            );
-        }
-
-        // 7. Stats Footer (original)
+        // 6. Stats Footer
         let play_count = (self.selected_game * 3) % 99; // Fake random number
         let stats = format!("PLAY COUNT: {:03} | RATING: A+", play_count);
         engine.draw_string(
